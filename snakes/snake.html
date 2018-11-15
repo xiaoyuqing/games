@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF_8">
+		<title>小游戏之贪吃蛇</title>
+		<style>
+			#canvas{
+				border: 3px solid red;
+			}
+		</style>
+	</head>
+	<body>
+		<canvas id="canvas" width="800" height="600">
+		</canvas>
+		<script>
+			var canvas = document.getElementById("canvas");
+			var ctx = canvas.getContext('2d');
+			var gridWidth = 20;
+			var score = 0;
+			var foods = new Array(), snakes = new Array();
+			function Food(x, y, w) {
+				var t = this;
+				t.x = x;
+				t.y = y;
+				t.w = w;
+
+				t.foodInit = function() {
+					ctx.beginPath();
+					ctx.arc(x + w / 2, y + w / 2, w / 2, 0, 360, false);
+					ctx.fillStyle = "red";
+					ctx.fill();
+					ctx.closePath();
+				}
+				t.equal = function (node) {
+					if (this.x == node.x && this.y == node.y) {
+						return true;
+					} else {
+						return false;
+					}
+				}
+			}
+			function Block(x, y, w) {
+				var t = this;
+				t.x = x;
+				t.y = y;
+				t.w = w;
+				t.drawBlock = function() {
+					ctx.beginPath();
+					ctx.arc(x + w / 2, y + w / 2, w / 2, 0, 360, false);
+					ctx.fillStyle = "blue";
+					ctx.fill();
+				}
+				t.clear = function () {
+					ctx.fillStyle ='white';
+					ctx.strokeStyle = 'white';
+					ctx.fillRect(x,y,w,w);
+          ctx.strokeRect(x,y,w,w);
+				}
+				t.equal = function (node) {
+					if (this.x == node.x && this.y == node.y) {
+						return true;
+					} else {
+						return false;
+					}
+				}
+			}
+
+			function Snake(x, y, len, speed) {
+				var t = this;
+				t.x = x;
+				t.y = y;
+				t.dir = 'R';
+				t.len = len;
+				var nx = x; ny = y;
+				t.init = function () {
+					for (var i = 0; i < len; i++) {
+						var tempBlock = new Block(nx, ny, gridWidth);
+						tempBlock.drawBlock();
+						nx -= gridWidth;
+						snakes.push(tempBlock);
+					}
+					snake_interval = setInterval(t.move, speed);
+				};
+				document.onkeydown = function(e) {
+					var code = e.keyCode;
+					t.odir = t.dir;
+					switch(code) {
+						case 37:
+						  t.dir = 'L';
+							break;
+						case 38:
+						  t.dir = 'U';
+							break;
+						case 39:
+						  t.dir = 'R';
+							break;
+						case 40:
+						  t.dir = 'D';
+							break;
+					}
+				}
+				t.move = function() {
+					var newHead;
+          if (snakes[0].x + snakes[0].w >= canvas.width || snakes[0].x - snakes[0].w < 0 ||
+					snakes[0].y - snakes[0].w < 0 || snakes[0].y + snakes[0].w > canvas.height) {
+						gameover();
+					}
+					else {
+						if (t.dir == 'R') {
+							newHead = new Block(snakes[0].x + gridWidth, snakes[0].y, gridWidth);
+						} else if (t.dir == 'L') {
+							newHead = new Block(snakes[0].x - gridWidth, snakes[0].y, gridWidth);
+						} else if (t.dir == 'D') {
+							newHead = new Block(snakes[0].x, snakes[0].y + gridWidth, gridWidth);
+						} else if (t.dir == 'U') {
+							newHead = new Block(snakes[0].x, snakes[0].y - gridWidth, gridWidth);
+						}
+					}
+
+					//禁止反向跑
+					if (newHead.x == snakes[1].x && newHead.y == snakes[1].y) {
+						t.dir = t.odir;
+						return;
+					}
+
+					//画新的蛇头
+					newHead.drawBlock();
+
+					//追加到数组中（长度会自动加）
+					snakes.unshift(newHead);
+
+					//清除原来尾部
+					snakes[snakes.length - 1].clear();
+
+					//并从数组中移除（长度会自动减）
+					snakes.pop();
+
+					//判读食物是否和蛇头相撞
+					for (var i = 0; i < foods.length; i++) {
+						if (foods[i].equal(snakes[0])) {
+							t.growth();
+							score = score + 10;
+							textmsg.innerHTML = score + "分";
+							t.len = t.len + 1;
+							clearInterval(snake_interval);
+							speed = speed < 20 ? speed : speed - 10;
+							snake_interval = setInterval(t.move, speed);
+						}
+ 					}
+
+					 //判断是否与自己相撞
+					for (var i = 1; i < snakes.length; i++) {
+						if (snakes[i].equal(snakes[0])) {
+							gameover();
+						}
+					}
+				}
+
+				t.growth = function() {
+					var tail1 = snakes[snakes.length - 1];
+					var tail2 = snakes[snakes.length - 2];
+					var addBlock;
+					if (tail1.x == tail2.x) {
+						if (tail1.y >= tail2.x) {
+							 addBlock = new Block(tail1.x, tail1.y + gridWidth, gridWidth);
+						} else {
+							addBlock = new Block(tail1.x, tail1.y - gridWidth, gridWidth);
+						}
+					} else {
+						if (tail1.x >= tail2.x) {
+							addBlock = new Block(tail1.x + gridWidth, tail1.y, gridWidth);
+						} else {
+							addBlock = new Block(tail1.x - gridWidth, tail1.y, gridWidth);
+						}
+					}
+					snakes.push(addBlock);
+					addBlock.drawBlock();
+					console.log(snakes.length);
+				}
+			}
+
+			function Farm() {
+				let t = this;
+				ctx.fillStyle = 'white';
+				ctx.fillRect(0, 0, canvas.width, canvas.height);
+				foods = [];
+				t.addfood = function() {
+					let x = parseInt(canvas.width / gridWidth * Math.random()) * gridWidth;
+					let y = parseInt(canvas.height / gridWidth * Math.random()) * gridWidth;
+					let food = new Food(x, y, gridWidth);
+					food.foodInit();
+					foods.push(food);
+				}
+
+				snakes = [];
+				t.snake = new Snake(100, 100, 5, 500);
+				t.snake.init();
+			}
+
+			function gameStart() {
+				let farm = new Farm();
+				food_interval = setInterval(farm.addfood, 2000);
+			}
+
+			gameStart();
+
+			function gameover() {
+				var judge = confirm('游戏结束，重新开始？');
+				clearInterval(snake_interval);
+				clearInterval(food_interval);
+				while (!judge) {
+					return false;
+				}
+				gameStart();
+			}
+
+			
+		</script>
+	</body>
+</html>
